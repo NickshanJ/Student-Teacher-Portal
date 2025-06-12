@@ -19,7 +19,10 @@ connectDB();
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: "https://student-teacher-portal.netlify.app",
+  credentials: true
+}));
 app.use(express.json());
 
 app.use('/api/users', require('./routes/userRoutes'));
