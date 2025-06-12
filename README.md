@@ -3,6 +3,19 @@
 ## Description
 A web application for students and teachers to manage courses, assignments, messaging, and profiles. Teachers can create courses and assignments, students can enroll and submit work, and both can communicate via chat.
 
+## Features
+- Student and teacher dashboards
+- Course and assignment management
+- Real-time messaging/chat
+- Profile management with image upload
+- Enrollment and submission tracking
+- Admin features (user/content management)
+- Email notifications and reminders
+
+## Tech Stack
+- **Frontend:** React, Vite, Tailwind CSS
+- **Backend:** Node.js, Express, MongoDB (Mongoose)
+
 ## Getting Started: Cloning the Project
 
 1. **Clone the repository:**
@@ -35,8 +48,31 @@ A web application for students and teachers to manage courses, assignments, mess
    npm run dev
    ```
 7. **Access the app:**
-   - Frontend: [http://localhost:5173](http://localhost:5173)
-   - Backend API: [http://localhost:5000](http://localhost:5000)
+   - Frontend (Production/Netlify): https://student-teacher-portal.netlify.app
+   - Backend API (Production/Render): https://student-teacher-portal-backend.onrender.com
+
+---
+
+## Demo Accounts
+
+You can use the following demo accounts to explore the portal:
+
+- **Admin**
+  - Username: admin
+  - Email: admin@example.com
+  - Password: admin123
+
+- **Teacher**
+  - Username: Teacher Test
+  - Email: teacher@test.com
+  - Password: Teacher123
+
+- **Student**
+  - Username: Nickshan
+  - Email: nick@example.com
+  - Password: Student123
+
+---
 
 ## Backend
 - **Tech Stack:** Node.js, Express, MongoDB (Mongoose)
@@ -69,21 +105,42 @@ A web application for students and teachers to manage courses, assignments, mess
 
 ---
 
-## Deployment
-- Set environment variables in production for both backend and frontend.
-- Make sure to remove all debug `console.log` except for essential server/database status logs.
+## Usage
+
+To use this portal:
+1. Follow the setup instructions above to install dependencies and configure environment variables.
+2. Start both the backend and frontend servers.
+3. Access the app using the provided URLs.
+4. Log in with the demo accounts or register a new user.
 
 ---
 
-## Author & License
-- Author: Your Name
-- License: MIT (or your choice)
+## Project Structure
 
----
+### Frontend
+- `frontend/` - React app source code and configuration
+  - `src/` - Main React source code
+    - `components/` - Reusable UI components
+    - `assets/` - Static assets (images, icons, etc.)
+    - `App.jsx` - Main app component
+    - `main.jsx` - Entry point for React app
+    - `axiosConfig.js` - Axios API configuration
+    - `config.js` - App configuration
+    - `index.css`, `App.css` - Global and app styles
+  - `public/portal-favicon.svg` - Custom favicon/logo
+  - `index.html` - Main HTML template
+  - `vite.config.js` - Vite build configuration
+  - `package.json` - Frontend dependencies and scripts
 
-## Notes
-- For any issues, check the logs in the backend server console.
-- Database connection status will be shown as:
-  - `Database is running on the server`
-  - `MongoDB connected`
-- For further customization, edit the respective files in `backend/` and `frontend/` folders.
+### Backend
+- `backend/` - Node.js/Express API and server code
+  - `server.js` - Main Express server entry point
+  - `config/db.js` - MongoDB connection setup
+  - `controllers/` - Route handler logic for each feature (users, courses, etc.)
+  - `middleware/` - Express middleware (auth, roles, uploads)
+  - `models/` - Mongoose schemas for MongoDB collections
+  - `routes/` - API route definitions for each feature
+  - `utils/sendEmail.js` - Utility for sending emails
+  - `reminderJob.js` - Scheduled job for assignment reminders
+  - `uploads/` - Uploaded files (profile images, assignments)
+  - `package.json` - Backend dependencies and scripts
