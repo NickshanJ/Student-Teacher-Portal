@@ -8,105 +8,133 @@ const Submissions = () => {
   const [assignments, setAssignments] = useState([]);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [submissions, setSubmissions] = useState([]);
-
-  // New state to hold all submissions for the teacher
   const [allSubmissions, setAllSubmissions] = useState([]);
-  // Grouped ungraded submissions by course
   const [ungradedByCourse, setUngradedByCourse] = useState({});
-
-  // Modal state
   const [showModal, setShowModal] = useState(false);
   const [gradingSubmissionId, setGradingSubmissionId] = useState(null);
   const [grade, setGrade] = useState("");
   const [feedback, setFeedback] = useState("");
-
+  const [loadingCourses, setLoadingCourses] = useState(true);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
+  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
+  const [loadingUngraded, setLoadingUngraded] = useState(true);
   const token = localStorage.getItem("token");
 
   // Fetch courses taught by teacher
   useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        const response = await axios.get(`${BASE_URL}/api/courses/mycourses`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setCourses(response.data);
-      } catch (error) {
-        console.error("Error fetching courses", error);
-      }
-    };
-    fetchCourses();
+    const cachedCourses = localStorage.getItem("teacherCourses");
+    if (cachedCourses) {
+      setCourses(JSON.parse(cachedCourses));
+      setLoadingCourses(false);
+    } else {
+      fetchCourses();
+    }
   }, [token]);
 
-  // Fetch all submissions for the teacher on component mount
   useEffect(() => {
-    const fetchAllSubmissions = async () => {
-      try {
-        const response = await axios.get(
-          `${BASE_URL}/api/submissions/teacher/submissions`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        setAllSubmissions(response.data.submissions);
-
-        // Filter ungraded submissions
-        const ungraded = response.data.submissions.filter(
-          (sub) => sub.grade === null
-        );
-
-        // Group by course title
-        const grouped = {};
-        ungraded.forEach((sub) => {
-          const courseTitle =
-            sub.assignment.course.title || sub.assignment.course;
-          // Sometimes course is just an ID string, so fallback to that if no title (depends on your backend population)
-          const courseId = sub.assignment.course._id || sub.assignment.course;
-          if (!grouped[courseId]) {
-            grouped[courseId] = {
-              title: courseTitle,
-              submissions: [],
-            };
-          }
-          grouped[courseId].submissions.push(sub);
-        });
-        setUngradedByCourse(grouped);
-      } catch (error) {
-        console.error("Error fetching all submissions", error);
-      }
-    };
     fetchAllSubmissions();
   }, [token]);
+
+  const fetchCourses = async () => {
+    setLoadingCourses(true);
+    try {
+      const response = await axios.get(`${BASE_URL}/api/courses/mycourses`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setCourses(response.data);
+      localStorage.setItem("teacherCourses", JSON.stringify(response.data));
+    } catch (error) {
+      console.error("Error fetching courses", error);
+    }
+    setLoadingCourses(false);
+  };
+
+  const fetchAllSubmissions = async () => {
+    setLoadingUngraded(true);
+    try {
+      const response = await axios.get(
+        `${BASE_URL}/api/submissions/teacher/submissions`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setAllSubmissions(response.data.submissions);
+      localStorage.setItem("teacherAllSubmissions", JSON.stringify(response.data.submissions));
+      // Filter ungraded submissions
+      const ungraded = response.data.submissions.filter(
+        (sub) => sub.grade === null
+      );
+      // Group by course title
+      const grouped = {};
+      ungraded.forEach((sub) => {
+        const courseTitle =
+          sub.assignment.course.title || sub.assignment.course;
+        const courseId = sub.assignment.course._id || sub.assignment.course;
+        if (!grouped[courseId]) {
+          grouped[courseId] = {
+            title: courseTitle,
+            submissions: [],
+          };
+        }
+        grouped[courseId].submissions.push(sub);
+      });
+      setUngradedByCourse(grouped);
+    } catch (error) {
+      console.error("Error fetching all submissions", error);
+    }
+    setLoadingUngraded(false);
+  };
 
   // Fetch assignments when course selected
   const handleCourseClick = async (course) => {
     setSelectedCourse(course);
     setSelectedAssignment(null);
     setSubmissions([]);
-    try {
-      const response = await axios.get(
-        `${BASE_URL}/api/assignments/${course._id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setAssignments(response.data);
-    } catch (error) {
-      console.error("Error fetching assignments", error);
+    setLoadingAssignments(true);
+    const cacheKey = `teacherAssignments_${course._id}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      setAssignments(JSON.parse(cached));
+      setLoadingAssignments(false);
+    } else {
+      try {
+        const response = await axios.get(
+          `${BASE_URL}/api/assignments/${course._id}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        setAssignments(response.data);
+        localStorage.setItem(cacheKey, JSON.stringify(response.data));
+      } catch (error) {
+        console.error("Error fetching assignments", error);
+      }
+      setLoadingAssignments(false);
     }
   };
 
   // Fetch submissions when assignment selected
   const handleAssignmentClick = async (assignment) => {
     setSelectedAssignment(assignment);
+    setLoadingSubmissions(true);
+    const cacheKey = `teacherSubmissions_${assignment._id}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      setSubmissions(JSON.parse(cached));
+      setLoadingSubmissions(false);
+      return;
+    }
     try {
       const response = await axios.get(
         `${BASE_URL}/api/submissions/assignment/${assignment._id}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setSubmissions(response.data);
+      localStorage.setItem(cacheKey, JSON.stringify(response.data));
     } catch (error) {
       console.error("Error fetching submissions", error);
     }
+    setLoadingSubmissions(false);
   };
 
   // Open grading modal for a submission
@@ -182,18 +210,26 @@ const Submissions = () => {
       {!selectedCourse && (
         <>
           <h2 className="text-3xl font-bold mb-4">Your Course</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {courses.map((course) => (
-              <div
-                key={course._id}
-                className="p-5 rounded-xl shadow hover:shadow-lg transition-all border border-gray-200 cursor-pointer bg-white"
-                onClick={() => handleCourseClick(course)}
-              >
-                <h3 className="text-xl font-semibold">{course.title}</h3>
-                <p className="text-sm text-gray-600">{course.description}</p>
-              </div>
-            ))}
-          </div>
+          {loadingCourses ? (
+            <div className="flex justify-center items-center py-10">
+              <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : courses.length === 0 ? (
+            <p className="text-gray-600">No courses found.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              {courses.map((course) => (
+                <div
+                  key={course._id}
+                  className="p-5 rounded-xl shadow hover:shadow-lg transition-all border border-gray-200 cursor-pointer bg-white"
+                  onClick={() => handleCourseClick(course)}
+                >
+                  <h3 className="text-xl font-semibold">{course.title}</h3>
+                  <p className="text-sm text-gray-600">{course.description}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
       
@@ -201,7 +237,11 @@ const Submissions = () => {
       {!selectedCourse && (
         <>
           <h2 className="text-2xl font-bold mb-4 text-red-600 mt-6">Pending Grading Reminders</h2>
-          {Object.keys(ungradedByCourse).length === 0 ? (
+          {loadingUngraded ? (
+            <div className="flex justify-center items-center py-6">
+              <div className="w-8 h-8 border-4 border-red-400 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : Object.keys(ungradedByCourse).length === 0 ? (
             <p className="mb-6">No submissions pending grading.</p>
           ) : (
             <div className="p-6 rounded-xl border border-gray-200 cursor-pointer bg-red-50">
@@ -254,23 +294,31 @@ const Submissions = () => {
             }}>Back to Courses
           </button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {assignments.map((assignment) => (
-              <div
-                key={assignment._id}
-                className="p-6 rounded-xl shadow hover:shadow-lg transition-all border border-gray-200 cursor-pointer bg-white"
-                onClick={() => handleAssignmentClick(assignment)} 
-              >
-                <h3 className="text-lg font-semibold">{assignment.title}</h3>
-                <p className="text-sm text-gray-600">
-                  {assignment.description}
-                </p>
-                <p className="text-xs text-gray-500 mt-2">
-                  Due: {new Date(assignment.dueDate).toLocaleDateString()}
-                </p>
-              </div>
-            ))}
-          </div>
+          {loadingAssignments ? (
+            <div className="flex justify-center items-center py-6">
+              <div className="w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : assignments.length === 0 ? (
+            <p className="text-gray-600">No assignments found.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              {assignments.map((assignment) => (
+                <div
+                  key={assignment._id}
+                  className="p-6 rounded-xl shadow hover:shadow-lg transition-all border border-gray-200 cursor-pointer bg-white"
+                  onClick={() => handleAssignmentClick(assignment)} 
+                >
+                  <h3 className="text-lg font-semibold">{assignment.title}</h3>
+                  <p className="text-sm text-gray-600">
+                    {assignment.description}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
 
@@ -289,8 +337,11 @@ const Submissions = () => {
             }}>Back to Assignments
           </button>
           </div>
-
-          {submissions.length === 0 ? (
+          {loadingSubmissions ? (
+            <div className="flex justify-center items-center py-6">
+              <div className="w-8 h-8 border-4 border-green-400 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : submissions.length === 0 ? (
             <p>No submissions yet.</p>
           ) : (
             <div className="space-y-6">
@@ -305,7 +356,7 @@ const Submissions = () => {
                         {submission.student.name} ({submission.student.email})
                       </h3>
                       <p className="text-sm text-gray-600 mb-3">
-                        Submitted:{" "}
+                        Submitted: {" "}
                         {new Date(submission.submittedAt).toLocaleString()}
                       </p>
                       <a

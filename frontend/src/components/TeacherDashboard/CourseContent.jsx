@@ -16,22 +16,42 @@ const CourseContent = () => {
     contentData: "",
     order: 0,
   });
+  const [loadingCourses, setLoadingCourses] = useState(true);
+  const [loadingContents, setLoadingContents] = useState(false);
 
   useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        const res = await axios.get(`${BASE_URL}/api/courses/mycourses`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        });
-        setCourses(res.data);
-      } catch (err) {
-        console.error("Error loading courses:", err);
-      }
-    };
-    fetchCourses();
+    const cachedCourses = localStorage.getItem("teacherCourses");
+    if (cachedCourses) {
+      setCourses(JSON.parse(cachedCourses));
+      setLoadingCourses(false);
+    } else {
+      fetchCourses();
+    }
   }, []);
 
+  const fetchCourses = async () => {
+    setLoadingCourses(true);
+    try {
+      const res = await axios.get(`${BASE_URL}/api/courses/mycourses`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      setCourses(res.data);
+      localStorage.setItem("teacherCourses", JSON.stringify(res.data));
+    } catch (err) {
+      console.error("Error loading courses:", err);
+    }
+    setLoadingCourses(false);
+  };
+
   const fetchContents = async (courseId) => {
+    setLoadingContents(true);
+    const cacheKey = `teacherCourseContents_${courseId}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      setContents(JSON.parse(cached));
+      setLoadingContents(false);
+      return;
+    }
     try {
       const res = await axios.get(
         `${BASE_URL}/api/course-content/${courseId}`,
@@ -40,9 +60,11 @@ const CourseContent = () => {
         }
       );
       setContents(res.data);
+      localStorage.setItem(cacheKey, JSON.stringify(res.data));
     } catch (err) {
       console.error("Error loading contents:", err);
     }
+    setLoadingContents(false);
   };
 
   const handleCourseClick = (course) => {
@@ -107,6 +129,9 @@ const CourseContent = () => {
         order: 0,
       });
       setSelectedContentId("");
+      // Invalidate cache for this course
+      const cacheKey = `teacherCourseContents_${selectedCourse._id}`;
+      localStorage.removeItem(cacheKey);
       fetchContents(selectedCourse._id);
       setTimeout(() => setMessage(""), 3000);
     } catch (err) {
@@ -119,35 +144,40 @@ const CourseContent = () => {
       <h1 className="text-3xl font-extrabold mb-8 text-gray-900">
         Course Contents
       </h1>
-
       {/* Course List */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {courses.map((course) => (
-          <div
-            key={course._id}
-            onClick={() => handleCourseClick(course)}
-            className={`cursor-pointer rounded-lg border border-gray-200 bg-gray-50 p-5 shadow-md transition-transform duration-200 ${
-              selectedCourse?._id === course._id
-                ? "ring-2 ring-indigo-500 bg-indigo-100"
-                : "hover:scale-[1.03] hover:shadow-lg"
-            }`}>
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">
-              {course.title}
-            </h2>
-            <p className="text-gray-600 text-sm leading-relaxed">
-              {course.description}
-            </p>
-          </div>
-        ))}
-      </div>
-
+      {loadingCourses ? (
+        <div className="flex justify-center items-center py-10">
+          <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      ) : courses.length === 0 ? (
+        <p className="text-gray-600">No courses found.</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {courses.map((course) => (
+            <div
+              key={course._id}
+              onClick={() => handleCourseClick(course)}
+              className={`cursor-pointer rounded-lg border border-gray-200 bg-gray-50 p-5 shadow-md transition-transform duration-200 ${
+                selectedCourse?._id === course._id
+                  ? "ring-2 ring-indigo-500 bg-indigo-100"
+                  : "hover:scale-[1.03] hover:shadow-lg"
+              }`}>
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">
+                {course.title}
+              </h2>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                {course.description}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
       {selectedCourse && (
         <section className="mt-12 bg-gray-50 rounded-lg p-8 shadow-lg border border-gray-200">
           <h2 className="text-2xl font-bold text-indigo-700 mb-6">
             Managing Content for:{" "}
             <span className="text-indigo-900">{selectedCourse.title}</span>
           </h2>
-
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-4 mb-6">
             {["create", "edit", "delete"].map((act) => (
@@ -168,7 +198,6 @@ const CourseContent = () => {
               </button>
             ))}
           </div>
-
           {/* Content Dropdown */}
           {(action === "edit" || action === "delete") && (
             <select
@@ -197,7 +226,6 @@ const CourseContent = () => {
               ))}
             </select>
           )}
-
           {/* Form */}
           {action && (
             <form
@@ -280,32 +308,38 @@ const CourseContent = () => {
               </button>
             </form>
           )}
-
           {/* Contents List */}
           <div className="mt-10">
             <h3 className="text-xl font-semibold mb-5 text-gray-900">
               Course Contents
             </h3>
-            <div className="grid gap-5">
-              {contents.map((content) => (
-                <div
-                  key={content._id}
-                  className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow"
-                >
-                  <h4 className="font-semibold text-indigo-700 mb-1">
-                    {content.title}
-                  </h4>
-                  <p className="text-gray-700 mb-2">{content.description}</p>
-                  <p className="text-sm text-gray-500">
-                    <span className="font-medium">Type:</span>{" "}
-                    {content.contentType} |{" "}
-                    <span className="font-medium">Order:</span> {content.order}
-                  </p>
-                </div>
-              ))}
-            </div>
+            {loadingContents ? (
+              <div className="flex justify-center items-center py-6">
+                <div className="w-8 h-8 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : contents.length === 0 ? (
+              <p className="text-gray-600">No contents found for this course.</p>
+            ) : (
+              <div className="grid gap-5">
+                {contents.map((content) => (
+                  <div
+                    key={content._id}
+                    className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <h4 className="font-semibold text-indigo-700 mb-1">
+                      {content.title}
+                    </h4>
+                    <p className="text-gray-700 mb-2">{content.description}</p>
+                    <p className="text-sm text-gray-500">
+                      <span className="font-medium">Type:</span>{" "}
+                      {content.contentType} |{" "}
+                      <span className="font-medium">Order:</span> {content.order}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-
           {message && (
             <p className="mt-6 text-green-600 font-medium">{message}</p>
           )}

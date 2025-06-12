@@ -14,12 +14,21 @@ const AllCourses = () => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const user = JSON.parse(localStorage.getItem("user"));
-  const token = localStorage.getItem("token");
-
   useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const token = localStorage.getItem("token");
     if (!user || !token) return navigate("/login");
 
+    // Try to load from cache
+    const cachedCourses = localStorage.getItem("allCourses");
+    const cachedEnrolled = localStorage.getItem("enrolledCourses");
+    if (cachedCourses && cachedEnrolled) {
+      setCourses(JSON.parse(cachedCourses));
+      setEnrolledCourses(JSON.parse(cachedEnrolled));
+      return;
+    }
+
+    // Otherwise, fetch from API and cache
     const fetchData = async () => {
       try {
         const [coursesRes, enrolledRes] = await Promise.all([
@@ -32,6 +41,8 @@ const AllCourses = () => {
         ]);
         setCourses(coursesRes.data);
         setEnrolledCourses(enrolledRes.data);
+        localStorage.setItem("allCourses", JSON.stringify(coursesRes.data));
+        localStorage.setItem("enrolledCourses", JSON.stringify(enrolledRes.data));
       } catch (err) {
         console.error("Error fetching data:", err);
         if (err.response?.status === 401) {
@@ -40,9 +51,8 @@ const AllCourses = () => {
         }
       }
     };
-
     fetchData();
-  }, [navigate, token, user]);
+  }, [navigate]);
 
   const handleClick = (type, courseId) => {
     setActionType(type);
@@ -164,7 +174,9 @@ const AllCourses = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {courses.length === 0 ? (
-            <p>Loading courses...</p>
+            <div className="col-span-full flex justify-center items-center min-h-[200px]">
+              <p className="text-lg font-semibold text-blue-600 animate-bounce">Loading courses...</p>
+            </div>
           ) : (
             courses.map((course) => {
               const isEnrolled = isCourseEnrolled(course._id);

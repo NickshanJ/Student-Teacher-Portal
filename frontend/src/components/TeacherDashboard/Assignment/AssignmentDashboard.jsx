@@ -15,6 +15,9 @@ const AssignmentDashboard = () => {
     dueDate: "",
   });
   const [message, setMessage] = useState("");
+  const [loadingCourses, setLoadingCourses] = useState(true);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
+  const [loadingRecent, setLoadingRecent] = useState(true);
 
   // 🆕 state to control course view mode
   const [viewingCourseAssignments, setViewingCourseAssignments] =
@@ -23,11 +26,24 @@ const AssignmentDashboard = () => {
   const [courseDetails, setCourseDetails] = useState(null);
 
   useEffect(() => {
-    fetchCourses();
-    fetchRecentAssignments();
+    const cachedCourses = localStorage.getItem("teacherCourses");
+    if (cachedCourses) {
+      setCourses(JSON.parse(cachedCourses));
+      setLoadingCourses(false);
+    } else {
+      fetchCourses();
+    }
+    const cachedRecent = localStorage.getItem("teacherRecentAssignments");
+    if (cachedRecent) {
+      setRecentAssignments(JSON.parse(cachedRecent));
+      setLoadingRecent(false);
+    } else {
+      fetchRecentAssignments();
+    }
   }, []);
 
   const fetchCourses = async () => {
+    setLoadingCourses(true);
     try {
       const res = await axios.get(`${BASE_URL}/api/courses/mycourses`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
@@ -36,12 +52,15 @@ const AssignmentDashboard = () => {
         ? res.data
         : res.data.courses || [];
       setCourses(coursesData);
+      localStorage.setItem("teacherCourses", JSON.stringify(coursesData));
     } catch (error) {
       console.error("❌ Error fetching courses:", error);
     }
+    setLoadingCourses(false);
   };
 
   const fetchRecentAssignments = async () => {
+    setLoadingRecent(true);
     try {
       const res = await axios.get(
         `${BASE_URL}/api/assignments/teacher-assignments`,
@@ -53,12 +72,22 @@ const AssignmentDashboard = () => {
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         .slice(0, 5);
       setRecentAssignments(sorted);
+      localStorage.setItem("teacherRecentAssignments", JSON.stringify(sorted));
     } catch (error) {
       console.error("Error fetching recent assignments:", error);
     }
+    setLoadingRecent(false);
   };
 
   const fetchAssignments = async (courseId) => {
+    setLoadingAssignments(true);
+    const cacheKey = `teacherAssignments_${courseId}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      setAssignments(JSON.parse(cached));
+      setLoadingAssignments(false);
+      return;
+    }
     try {
       const res = await axios.get(
         `${BASE_URL}/api/assignments/teacher-assignments`,
@@ -70,9 +99,11 @@ const AssignmentDashboard = () => {
         (a) => a.course._id === courseId
       );
       setAssignments(filtered);
+      localStorage.setItem(cacheKey, JSON.stringify(filtered));
     } catch (error) {
       console.error("Error fetching assignments:", error);
     }
+    setLoadingAssignments(false);
   };
 
   // 🆕 fetch assignments for selected course and show detail view
@@ -195,24 +226,28 @@ const AssignmentDashboard = () => {
       ) : (
         <>
           <h1 className="text-3xl font-bold mb-6 text-gray-800">Your Courses</h1>
-
-          {/* 📚 Course Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {courses.length === 0 ? (
-              <p className="text-gray-600">No courses found.</p>
-            ) : (
-              courses.map((course) => (
-                <div
-                  key={course._id}
-                  className="bg-white p-5 rounded-xl shadow hover:shadow-xl transition-all cursor-pointer border border-gray-200"
-                  onClick={() => handleCourseClick(course)}
-                >
-                  <h2 className="text-xl font-semibold text-gray-800">{course.title}</h2>
-                  <p className="text-gray-600 mt-2">{course.description}</p>
-                </div>
-              ))
-            )}
-          </div>
+          {loadingCourses ? (
+            <div className="flex justify-center items-center py-10">
+              <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {courses.length === 0 ? (
+                <p className="text-gray-600">No courses found.</p>
+              ) : (
+                courses.map((course) => (
+                  <div
+                    key={course._id}
+                    className="bg-white p-5 rounded-xl shadow hover:shadow-xl transition-all cursor-pointer border border-gray-200"
+                    onClick={() => handleCourseClick(course)}
+                  >
+                    <h2 className="text-xl font-semibold text-gray-800">{course.title}</h2>
+                    <p className="text-gray-600 mt-2">{course.description}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
 
           {/* 🔧 Action Buttons */}
           <div className="flex flex-wrap gap-4 justify-center mb-8">
@@ -303,7 +338,11 @@ const AssignmentDashboard = () => {
                 ))}
               </select>
 
-              {assignments.length > 0 && (
+              {loadingAssignments ? (
+                <div className="flex justify-center items-center py-4">
+                  <div className="w-6 h-6 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              ) : assignments.length > 0 && (
                 <select
                   value={selectedAssignment}
                   onChange={(e) => setSelectedAssignment(e.target.value)}
@@ -375,7 +414,11 @@ const AssignmentDashboard = () => {
                 ))}
               </select>
 
-              {assignments.length > 0 && (
+              {loadingAssignments ? (
+                <div className="flex justify-center items-center py-4">
+                  <div className="w-6 h-6 border-4 border-red-400 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              ) : assignments.length > 0 && (
                 <select
                   value={selectedAssignment}
                   onChange={(e) => setSelectedAssignment(e.target.value)}
@@ -407,7 +450,11 @@ const AssignmentDashboard = () => {
 
           {/* 🕐 Recently Added Assignments */}
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Recently Added Assignments</h2>
-          {recentAssignments.length === 0 ? (
+          {loadingRecent ? (
+            <div className="flex justify-center items-center py-6">
+              <div className="w-8 h-8 border-4 border-purple-400 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : recentAssignments.length === 0 ? (
             <p className="text-gray-600">No recent assignments found.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

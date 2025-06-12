@@ -39,24 +39,34 @@ const ProfilePage = () => {
     }
   };
 
-  const fetchCourseCount = async () => {
-    try {
-      const res = await axios.get(
-        `${BASE_URL}/api/enrollments/my-courses`,
-        {
-          headers: {
-        Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      setCourseCount(res.data.length);
-    } catch (error) {
-      console.error("Failed to fetch enrolled courses", error);
-    }
-  };
-
   useEffect(() => {
-    fetchCourseCount();
+    const user = JSON.parse(localStorage.getItem("user"));
+    const token = localStorage.getItem("token");
+    if (!user || !token) return;
+
+    // Try to load from cache
+    const cachedEnrolled = localStorage.getItem("enrolledCourses");
+    if (cachedEnrolled) {
+      setCourseCount(JSON.parse(cachedEnrolled).length);
+    } else {
+      const fetchCourseCount = async () => {
+        try {
+          const res = await axios.get(
+            `${BASE_URL}/api/enrollments/my-courses`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          setCourseCount(res.data.length);
+          localStorage.setItem("enrolledCourses", JSON.stringify(res.data));
+        } catch (error) {
+          console.error("Failed to fetch enrolled courses", error);
+        }
+      };
+      fetchCourseCount();
+    }
 
     const savedImage = localStorage.getItem("profileImage");
     if (savedImage) {

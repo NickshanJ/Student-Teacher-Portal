@@ -7,12 +7,18 @@ const Classes = () => {
   const [enrolledCourses, setEnrolledCourses] = useState([]);
   const navigate = useNavigate();
 
-  const user = JSON.parse(localStorage.getItem("user"));
-  const token = localStorage.getItem("token");
-
   useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const token = localStorage.getItem("token");
     if (!user || !token) {
       navigate("/login");
+      return;
+    }
+
+    // Try to load from cache
+    const cachedEnrolled = localStorage.getItem("enrolledCourses");
+    if (cachedEnrolled) {
+      setEnrolledCourses(JSON.parse(cachedEnrolled));
       return;
     }
 
@@ -22,6 +28,7 @@ const Classes = () => {
           headers: { Authorization: `Bearer ${token}` },
         });
         setEnrolledCourses(res.data);
+        localStorage.setItem("enrolledCourses", JSON.stringify(res.data));
       } catch (error) {
         console.error("Error fetching enrolled courses:", error);
         if (error.response?.status === 401) {
@@ -32,7 +39,7 @@ const Classes = () => {
     };
 
     fetchEnrolledCourses();
-  }, [navigate, token, user]);
+  }, [navigate]);
 
   const handleCourseClick = (courseId) => {
     // Update this path to be nested inside student-dashboard

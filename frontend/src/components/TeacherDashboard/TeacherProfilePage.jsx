@@ -5,8 +5,8 @@ import { BASE_URL } from '../../config';
 const TeacherProfilePage = () => {
   const [image, setImage] = useState(null);
   const [courseCount, setCourseCount] = useState(0);
+  const [loading, setLoading] = useState(true);
   const fileInputRef = useRef(null);
-
   const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user"));
 
@@ -39,6 +39,13 @@ const TeacherProfilePage = () => {
   };
 
   const fetchCourseCount = async () => {
+    setLoading(true);
+    const cached = localStorage.getItem("teacherProfileCourseCount");
+    if (cached) {
+      setCourseCount(Number(cached));
+      setLoading(false);
+      return;
+    }
     try {
       const res = await axios.get(
         `${BASE_URL}/api/courses/mycourses`,
@@ -49,9 +56,11 @@ const TeacherProfilePage = () => {
         }
       );
       setCourseCount(res.data.length);
+      localStorage.setItem("teacherProfileCourseCount", res.data.length);
     } catch (error) {
       console.error("Failed to fetch teacher's courses", error);
     }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -96,7 +105,11 @@ const TeacherProfilePage = () => {
             <span className="font-semibold">Role:</span> {user?.role}
           </p>
           <p className="text-lg">
-            <span className="font-semibold">Courses Created:</span> {courseCount}
+            <span className="font-semibold">Courses Created:</span> {loading ? (
+              <span className="inline-block align-middle ml-2">
+                <span className="w-5 h-5 border-4 border-blue-400 border-t-transparent rounded-full inline-block animate-spin"></span>
+              </span>
+            ) : courseCount}
           </p>
         </div>
       </div>

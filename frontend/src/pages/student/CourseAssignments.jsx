@@ -25,35 +25,44 @@ const CourseAssignments = () => {
     file: null,
   });
 
-  const user = JSON.parse(localStorage.getItem("user"));
-  const token = localStorage.getItem("token");
-
-  const fetchAssignments = async () => {
-    try {
-      // Use the submissions API that includes the submitted flag
-      const res = await axios.get(
-        `${BASE_URL}/api/submissions/course/${courseId}/assignments`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setAssignments(res.data);
-    } catch (error) {
-      console.error("Error fetching assignments:", error);
-      if (error.response?.status === 401) {
-        localStorage.clear();
-        navigate("/login");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const token = localStorage.getItem("token");
     if (!user || !token) {
       navigate("/login");
       return;
     }
+
+    // Try to load from cache
+    const cacheKey = `assignments_${courseId}`;
+    const cachedAssignments = localStorage.getItem(cacheKey);
+    if (cachedAssignments) {
+      setAssignments(JSON.parse(cachedAssignments));
+      setLoading(false);
+      return;
+    }
+
+    const fetchAssignments = async () => {
+      try {
+        // Use the submissions API that includes the submitted flag
+        const res = await axios.get(
+          `${BASE_URL}/api/submissions/course/${courseId}/assignments`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        setAssignments(res.data);
+        localStorage.setItem(cacheKey, JSON.stringify(res.data));
+      } catch (error) {
+        console.error("Error fetching assignments:", error);
+        if (error.response?.status === 401) {
+          localStorage.clear();
+          navigate("/login");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchAssignments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId]);

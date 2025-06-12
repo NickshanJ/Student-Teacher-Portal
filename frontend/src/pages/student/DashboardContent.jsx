@@ -31,72 +31,81 @@ const DashboardContent = () => {
     const fetchData = async () => {
       const user = JSON.parse(localStorage.getItem("user"));
       const token = localStorage.getItem("token");
-
       if (!user || !token) {
         navigate("/login");
         return;
       }
 
-      try {
-        // Fetch courses and enrolled courses in parallel
-        const [allCoursesRes, enrolledRes] = await Promise.all([
-          axios.get(`${BASE_URL}/api/courses`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          axios.get(`${BASE_URL}/api/enrollments/my-courses`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
+      let enrolledResData;
+      // Try to load from cache
+      const cachedCourses = localStorage.getItem("allCourses");
+      const cachedEnrolled = localStorage.getItem("enrolledCourses");
+      if (cachedCourses && cachedEnrolled) {
+        setCourses(JSON.parse(cachedCourses));
+        setEnrolled(JSON.parse(cachedEnrolled));
+        enrolledResData = JSON.parse(cachedEnrolled);
+      } else {
+        try {
+          // Fetch courses and enrolled courses in parallel
+          const [allCoursesRes, enrolledRes] = await Promise.all([
+            axios.get(`${BASE_URL}/api/courses`, {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            axios.get(`${BASE_URL}/api/enrollments/my-courses`, {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+          ]);
+          setCourses(allCoursesRes.data);
+          setEnrolled(enrolledRes.data);
+          localStorage.setItem("allCourses", JSON.stringify(allCoursesRes.data));
+          localStorage.setItem("enrolledCourses", JSON.stringify(enrolledRes.data));
+          enrolledResData = enrolledRes.data;
+        } catch (err) {
+          if (err.response && err.response.status === 401) {
+            localStorage.removeItem("user");
+            localStorage.removeItem("token");
+            navigate("/login");
+            return;
+          }
+        }
+      }
 
-        setCourses(allCoursesRes.data);
-        setEnrolled(enrolledRes.data);
+      // Fetch all submissions of this student
+      const submissionsRes = await axios.get(`${BASE_URL}/api/submissions/my-submissions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const submissionsData = submissionsRes.data;
+      setSubmissions(submissionsData);
 
-        // Fetch all submissions of this student
-        const submissionsRes = await axios.get(`${BASE_URL}/api/submissions/my-submissions`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const submissionsData = submissionsRes.data;
-        setSubmissions(submissionsData);
-
-        // Fetch assignments for all enrolled courses
-        let allAssignmentsData = [];
-        for (const enrollment of enrolledRes.data) {
+      // Fetch assignments for all enrolled courses
+      let allAssignmentsData = [];
+      if (enrolledResData && Array.isArray(enrolledResData)) {
+        for (const enrollment of enrolledResData) {
           const courseId = enrollment.course._id;
           const assignmentsRes = await axios.get(`${BASE_URL}/api/assignments/${courseId}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           allAssignmentsData = allAssignmentsData.concat(assignmentsRes.data);
         }
-        setAllAssignments(allAssignmentsData);
-
-        // Calculate completed and pending assignments
-        let completedCount = 0;
-        let pendingCount = 0;
-
-        allAssignmentsData.forEach((assignment) => {
-          const submission = submissionsData.find(
-            (sub) => sub.assignment._id === assignment._id
-          );
-
-          if (submission && submission.grade !== null) {
-            completedCount++;
-          } else {
-            pendingCount++;
-          }
-        });
-
-        setAssignmentStats({ pending: pendingCount, completed: completedCount });
-
-      } catch (err) {
-        console.error("Failed to fetch dashboard data", err);
-        if (err.response && err.response.status === 401) {
-          localStorage.removeItem("user");
-          localStorage.removeItem("token");
-          navigate("/login");
-        }
       }
-    };
+      setAllAssignments(allAssignmentsData);
 
+      // Calculate completed and pending assignments
+      let completedCount = 0;
+      let pendingCount = 0;
+
+      allAssignmentsData.forEach((assignment) => {
+        const submission = submissionsData.find(
+          (sub) => sub.assignment._id === assignment._id
+        );
+        if (submission && submission.grade !== null) {
+          completedCount++;
+        } else {
+          pendingCount++;
+        }
+      });
+      setAssignmentStats({ pending: pendingCount, completed: completedCount });
+    };
     fetchData();
   }, [navigate]);
 

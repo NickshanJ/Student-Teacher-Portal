@@ -7,14 +7,27 @@ const ClassContent = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const [content, setContent] = useState([]);
+  const [loading, setLoading] = useState(true);
   const token = localStorage.getItem("token");
 
   useEffect(() => {
-    if (!token) {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const token = localStorage.getItem("token");
+    if (!user || !token) {
       navigate("/login");
       return;
     }
 
+    // Try to load from cache
+    const cacheKey = `classContent_${courseId}`;
+    const cachedContent = localStorage.getItem(cacheKey);
+    if (cachedContent) {
+      setContent(JSON.parse(cachedContent));
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     const fetchCourseContent = async () => {
       try {
         const res = await axios.get(
@@ -32,23 +45,25 @@ const ClassContent = () => {
         );
         const completedIds = completedRes.data.completedContentIds || [];
         // Mark completed in UI
-        setContent(
-          res.data.map((item) => ({
-            ...item,
-            completed: completedIds.includes(item._id),
-          }))
-        );
+        const contentWithStatus = res.data.map((item) => ({
+          ...item,
+          completed: completedIds.includes(item._id),
+        }));
+        setContent(contentWithStatus);
+        localStorage.setItem(cacheKey, JSON.stringify(contentWithStatus));
       } catch (err) {
         console.error("Error fetching course content:", err);
         if (err.response?.status === 401) {
           localStorage.clear();
           navigate("/login");
         }
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchCourseContent();
-  }, [courseId, token, navigate]);
+  }, [courseId, navigate]);
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -65,10 +80,18 @@ const ClassContent = () => {
         </button>
       </div>
 
-      {content.length === 0 ? (
-        <p className="text-center text-gray-500 italic mt-20">
-          No content available for this course.
-        </p>
+      {loading ? (
+        <div className="flex justify-center items-center min-h-[200px]">
+          <p className="text-lg font-semibold text-blue-600 animate-bounce">
+            Loading content...
+          </p>
+        </div>
+      ) : content.length === 0 ? (
+        <div className="flex justify-center items-center min-h-[200px]">
+          <p className="text-lg font-semibold text-gray-500">
+            No content available for this course.
+          </p>
+        </div>
       ) : (
         <div className="space-y-6">
           {content.map((item) => (

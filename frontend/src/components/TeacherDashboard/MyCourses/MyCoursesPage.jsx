@@ -11,22 +11,32 @@ const MyCoursesPage = () => {
   const [formData, setFormData] = useState({ title: "", description: "" });
   const [viewEnrolled, setViewEnrolled] = useState(false);
   const [enrolledStudents, setEnrolledStudents] = useState([]);
-
+  const [loadingCourses, setLoadingCourses] = useState(true);
+  const [loadingEnrolled, setLoadingEnrolled] = useState(false);
   const token = localStorage.getItem("token");
 
   useEffect(() => {
-    fetchCourses();
+    const cachedCourses = localStorage.getItem("teacherCourses");
+    if (cachedCourses) {
+      setCourses(JSON.parse(cachedCourses));
+      setLoadingCourses(false);
+    } else {
+      fetchCourses();
+    }
   }, []);
 
   const fetchCourses = async () => {
+    setLoadingCourses(true);
     try {
       const res = await axios.get(`${BASE_URL}/api/courses`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setCourses(res.data);
+      localStorage.setItem("teacherCourses", JSON.stringify(res.data));
     } catch (error) {
       console.error("Error fetching courses", error);
     }
+    setLoadingCourses(false);
   };
 
   const handleCreate = async () => {
@@ -73,6 +83,14 @@ const MyCoursesPage = () => {
   const viewEnrolledStudents = async (courseId) => {
     setSelectedCourse(courseId);
     setViewEnrolled(true);
+    setLoadingEnrolled(true);
+    const cacheKey = `teacherEnrolledStudents_${courseId}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      setEnrolledStudents(JSON.parse(cached));
+      setLoadingEnrolled(false);
+      return;
+    }
     try {
       const res = await axios.get(
         `${BASE_URL}/api/enrollments/course/${courseId}/students`,
@@ -81,9 +99,11 @@ const MyCoursesPage = () => {
         }
       );
       setEnrolledStudents(res.data);
+      localStorage.setItem(cacheKey, JSON.stringify(res.data));
     } catch (error) {
       console.error("Error fetching enrolled students", error);
     }
+    setLoadingEnrolled(false);
   };
 
   const goBack = () => {
@@ -97,20 +117,30 @@ const MyCoursesPage = () => {
       {!viewEnrolled ? (
         <>
           <h1 className="text-3xl font-bold mb-6 text-gray-800">My Courses</h1>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {courses.map((course) => (
-              <div
-                key={course._id}
-                className="bg-white p-5 rounded-xl shadow hover:shadow-xl transition-all cursor-pointer border border-gray-200"
-                onClick={() => viewEnrolledStudents(course._id)}
-              >
-                <h2 className="text-xl font-semibold text-gray-800 mb-2">
-                  {course.title}
-                </h2>
-                <p className="text-gray-600">{course.description}</p>
-              </div>
-            ))}
-          </div>
+          {loadingCourses ? (
+            <div className="flex justify-center items-center py-10">
+              <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {courses.length === 0 ? (
+                <p className="text-gray-600">No courses found.</p>
+              ) : (
+                courses.map((course) => (
+                  <div
+                    key={course._id}
+                    className="bg-white p-5 rounded-xl shadow hover:shadow-xl transition-all cursor-pointer border border-gray-200"
+                    onClick={() => viewEnrolledStudents(course._id)}
+                  >
+                    <h2 className="text-xl font-semibold text-gray-800 mb-2">
+                      {course.title}
+                    </h2>
+                    <p className="text-gray-600">{course.description}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
           <div className="flex gap-4 mb-6">
             <button
               onClick={() => setShowCreateForm(!showCreateForm)}
@@ -246,7 +276,11 @@ const MyCoursesPage = () => {
               Back
             </button>
           </div>
-          {enrolledStudents.length === 0 ? (
+          {loadingEnrolled ? (
+            <div className="flex justify-center items-center py-10">
+              <div className="w-8 h-8 border-4 border-green-400 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : enrolledStudents.length === 0 ? (
             <p className="text-gray-600">No students enrolled.</p>
           ) : (
             <div className="space-y-4">
