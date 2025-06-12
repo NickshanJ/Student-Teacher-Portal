@@ -1,5 +1,5 @@
 const express = require('express');
-const cors = require('cors');
+const cors = require("cors");
 const courseRoutes = require('./routes/courseRoutes');
 const enrollmentRoutes = require('./routes/enrollmentRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
@@ -20,7 +20,10 @@ connectDB();
 const app = express();
 
 app.use(cors({
-  origin: "https://student-teacher-portal.netlify.app",
+  origin: [
+    "https://student-teacher-portal.netlify.app",
+    "http://localhost:5173"
+  ],
   credentials: true
 }));
 app.use(express.json());
