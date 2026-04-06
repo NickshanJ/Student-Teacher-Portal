@@ -71,21 +71,33 @@ const DashboardContent = () => {
       }
 
       // Fetch all submissions of this student
-      const submissionsRes = await axios.get(`${BASE_URL}/api/submissions/my-submissions`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const submissionsData = submissionsRes.data;
-      setSubmissions(submissionsData);
+      let submissionsData = [];
+      try {
+        const submissionsRes = await axios.get(`${BASE_URL}/api/submissions/my-submissions`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        submissionsData = submissionsRes.data;
+        setSubmissions(submissionsData);
+      } catch (err) {
+        console.error("Error fetching submissions:", err);
+        setSubmissions([]);
+      }
 
-      // Fetch assignments for all enrolled courses
+      // Fetch assignments for all enrolled courses in parallel
       let allAssignmentsData = [];
       if (enrolledResData && Array.isArray(enrolledResData)) {
-        for (const enrollment of enrolledResData) {
-          const courseId = enrollment.course._id;
-          const assignmentsRes = await axios.get(`${BASE_URL}/api/assignments/${courseId}`, {
-            headers: { Authorization: `Bearer ${token}` },
+        try {
+          const assignmentPromises = enrolledResData.map((enrollment) => {
+            const courseId = enrollment.course._id;
+            return axios.get(`${BASE_URL}/api/assignments/${courseId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
           });
-          allAssignmentsData = allAssignmentsData.concat(assignmentsRes.data);
+          const assignmentResponses = await Promise.all(assignmentPromises);
+          allAssignmentsData = assignmentResponses.flatMap(res => res.data);
+        } catch (err) {
+          console.error("Error fetching assignments:", err);
+          allAssignmentsData = [];
         }
       }
       setAllAssignments(allAssignmentsData);

@@ -29,16 +29,22 @@ import TeacherDashboard from "./pages/TeacherDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 
 function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    const storedUser = localStorage.getItem("user");
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
+    setLoading(false);
   }, []);
 
   const ProtectedRoute = ({ children, allowedRoles }) => {
+    if (loading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
     if (!user) return <Navigate to="/" />;
     // Single-role support only
     if (!allowedRoles.includes(user.role)) return <Navigate to="/" />;
