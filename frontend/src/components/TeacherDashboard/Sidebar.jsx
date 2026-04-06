@@ -1,4 +1,5 @@
 import React from "react";
+import { logout } from "../../utils/logout";
 
 const Sidebar = ({ onSectionChange, active }) => {
   const menuItems = [
@@ -12,10 +13,7 @@ const Sidebar = ({ onSectionChange, active }) => {
   ];
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("profileImage");
-    window.location.href = "/login";
+    logout();
   };
 
   return (

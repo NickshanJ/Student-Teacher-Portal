@@ -1,4 +1,5 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
+import { logout } from "../../utils/logout";
 
 const StudentDashboard = () => {
   const location = useLocation();
@@ -92,8 +93,7 @@ const StudentDashboard = () => {
           <li>
             <button
               onClick={() => {
-                localStorage.removeItem("user");
-                window.location.href = "/login";
+                logout();
               }}
               className="block w-full text-left px-3 py-2 rounded hover:bg-gray-700 text-red-400 font-bold transition"
             >

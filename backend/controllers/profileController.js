@@ -3,7 +3,7 @@ const User = require('../models/userModel');
 
 const uploadProfileImage = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user._id;
     const imagePath = req.file.filename;
 
     const updatedUser = await User.findByIdAndUpdate(

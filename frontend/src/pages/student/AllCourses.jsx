@@ -8,7 +8,6 @@ const AllCourses = () => {
   const [enrolledCourses, setEnrolledCourses] = useState([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showForm, setShowForm] = useState(null);
-  const [formData, setFormData] = useState({ name: "", email: "" });
   const [selectedCourseId, setSelectedCourseId] = useState(null);
   const [actionType, setActionType] = useState(""); // "enroll" or "unenroll"
   const [error, setError] = useState("");
@@ -58,7 +57,6 @@ const AllCourses = () => {
     setActionType(type);
     setSelectedCourseId(courseId);
     setShowForm({ type, courseId });
-    setFormData({ name: "", email: "" });
     setError("");
   };
 
@@ -80,20 +78,17 @@ const AllCourses = () => {
           `${BASE_URL}/api/enrollments/enroll`,
           {
             courseId: selectedCourseId,
-            name: formData.name,
-            email: formData.email,
           },
           {
-            headers: { Authorization: `Bearer ${user?.token || token}` },
+            headers: { Authorization: `Bearer ${token}` },
           }
         );
       } else {
-        // Unenroll is DELETE with payload in data
+        // Unenroll is DELETE
         res = await axios.delete(
           `${BASE_URL}/api/enrollments/unenroll/${selectedCourseId}`,
           {
             headers: { Authorization: `Bearer ${token}` },
-            data: { name: formData.name, email: formData.email },
           }
         );
       }
@@ -138,37 +133,23 @@ const AllCourses = () => {
           onSubmit={handleFormSubmit}
           className="bg-gray-100 p-6 rounded-xl shadow max-w-md mx-auto">
           <h2 className="text-xl font-semibold mb-4 capitalize">
-            {showForm.type} Form
+            Confirm {showForm.type}
           </h2>
 
-          <input
-            type="text"
-            placeholder="Name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full mb-4 p-2 rounded border"
-            required
-          />
-          <input
-            type="email"
-            placeholder="Email"
-            value={formData.email}
-            onChange={(e) =>
-              setFormData({ ...formData, email: e.target.value })
-            }
-            className="w-full mb-4 p-2 rounded border"
-            required
-          />
+          <p className="text-gray-700 mb-4">
+            Are you sure you want to {showForm.type} this course?
+          </p>
+
           {error && <p className="text-red-500 mb-2">{error}</p>}
 
           <div className="flex justify-between">
             <button
               type="button"
               onClick={handleBack}
-              className="bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-500">Back</button>
+              className="bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-500">Cancel</button>
             <button
               type="submit"
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-400">Submit</button>
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-400">Confirm</button>
           </div>
         </form>
       ) : (

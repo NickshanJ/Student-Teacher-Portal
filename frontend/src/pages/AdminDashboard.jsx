@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { BASE_URL } from '../config';
+import { logout } from '../utils/logout';
 
 const AdminDashboard = () => {
   const [pendingTeachers, setPendingTeachers] = useState([]);
@@ -144,10 +145,7 @@ const AdminDashboard = () => {
         <div className="flex-1" />
         <button
           onClick={() => {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            localStorage.removeItem('userInfo');
-            window.location.href = '/login';
+            logout();
           }}
           className="w-full flex items-center justify-center gap-2 px-4 py-2 mb-2 bg-transparent hover:bg-gray-700 text-red-400 rounded-lg font-semibold shadow-none transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-300"
           style={{ marginTop: 'auto' }}

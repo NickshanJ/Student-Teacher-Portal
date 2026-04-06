@@ -29,26 +29,16 @@ function Login() {
 
       setMessage("Login successful!");
 
-      setTimeout(() => {
-        if (Array.isArray(user.roles)) {
-          if (user.roles.length === 1) {
-            if (user.roles[0] === "student") navigate("/student-dashboard");
-            else if (user.roles[0] === "teacher") navigate("/teacher-dashboard");
-            else if (user.roles[0] === "admin") navigate("/admin-dashboard");
-            else navigate("/login");
-          } else {
-            // Multi-role: prompt user to select role
-            localStorage.setItem("pendingRoleSelection", "true");
-            navigate("/select-role");
-          }
-        } else {
-          // fallback for old user.role string
-          if (user.role === "student") navigate("/student-dashboard");
-          else if (user.role === "teacher") navigate("/teacher-dashboard");
-          else if (user.role === "admin") navigate("/admin-dashboard");
-          else navigate("/login");
-        }
-      }, 100);
+      // Navigate based on user role immediately
+      if (user.role === "student") {
+        navigate("/student-dashboard");
+      } else if (user.role === "teacher") {
+        navigate("/teacher-dashboard");
+      } else if (user.role === "admin") {
+        navigate("/admin-dashboard");
+      } else {
+        navigate("/login");
+      }
     } catch (err) {
       setError(
         err.response?.data?.message || "Server error. Please try again."

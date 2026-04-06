@@ -35,18 +35,22 @@ const createAssignment = async (req, res) => {
     // Create in-app notifications
     const notifications = students.map((student) => ({
       user: student._id,
-      message: `📘 New assignment "${title}" posted in course "${course.name}"`,
+      message: `📘 New assignment "${title}" posted in course "${course.title}"`,
     }));
     await Notification.insertMany(notifications);
 
     // Send email notifications
-    students.forEach((student) => {
-  sendEmail(
-    student.email,
-    'New Assignment Posted',
-    `Hello ${student.name},\n\nA new assignment titled "${title}" has been posted in your course "${course.name}".\n\nDue Date: ${new Date(dueDate).toLocaleString()}\n\nLogin to your portal to view more details.`
-  );
-});
+    await Promise.all(
+      students.map((student) =>
+        sendEmail(
+          student.email,
+          'New Assignment Posted',
+          `Hello ${student.name},\n\nA new assignment titled "${title}" has been posted in your course "${course.title}".\n\nDue Date: ${new Date(dueDate).toLocaleString()}\n\nLogin to your portal to view more details.`
+        )
+      )
+    ).catch((error) => {
+      console.error('Error sending assignment notification emails:', error);
+    });
 
     res.status(201).json({ message: 'Assignment created', assignment });
   } catch (error) {
@@ -129,7 +133,7 @@ const getAssignmentsByTeacher = async (req, res) => {
 
     // Find all assignments for these courses
     const assignments = await Assignment.find({ course: { $in: courseIds } })
-      .populate('course', 'name') // optional: shows course name with assignment
+      .populate('course', 'title') // optional: shows course title with assignment
       .sort({ dueDate: 1 });
 
     res.status(200).json({ assignments });
