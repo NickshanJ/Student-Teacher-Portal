@@ -15,8 +15,8 @@ const AllCourses = () => {
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user"));
-    const token = localStorage.getItem("token");
-    if (!user || !token) return navigate("/login");
+    const storedToken = localStorage.getItem("token");
+    if (!user || !storedToken) return navigate("/login");
 
     // Try to load from cache
     const cachedCourses = localStorage.getItem("allCourses");
@@ -32,10 +32,10 @@ const AllCourses = () => {
       try {
         const [coursesRes, enrolledRes] = await Promise.all([
           axios.get(`${BASE_URL}/api/courses`, {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: { Authorization: `Bearer ${storedToken}` },
           }),
           axios.get(`${BASE_URL}/api/enrollments/my-courses`, {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: { Authorization: `Bearer ${storedToken}` },
           }),
         ]);
         setCourses(coursesRes.data);
@@ -70,6 +70,12 @@ const AllCourses = () => {
     e.preventDefault();
 
     try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("No auth token found. Please login again.");
+        return;
+      }
+
       let res;
 
       if (actionType === "enroll") {
